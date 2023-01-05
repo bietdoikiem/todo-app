@@ -20,7 +20,20 @@ Parameters:
     Type: AWS::EC2::KeyPair::KeyName
     Default: lab-key
 Resources:
-  # Public Amazon RDS instance
+  # RDS Security Group
+  MyRDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: RDSGroup
+      GroupDescription: Security group for RDS instance
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 0.0.0.0/0
+
+  # Public RDS instance
   MyRDSInstance:
     Type: AWS::RDS::DBInstance
     DependsOn:
@@ -35,19 +48,6 @@ Resources:
       PubliclyAccessible: true
       VPCSecurityGroups:
         - !Ref MyRDSSecurityGroup
-
-  # RDS Security Group
-  MyRDSSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: RDSGroup
-      GroupDescription: Security group for RDS instance
-      VpcId: !Ref MyVPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 5432
-          ToPort: 5432
-          CidrIp: 0.0.0.0/0
 
   ## Parameter Store for DB connection ##
   MyDatabaseParameter:
