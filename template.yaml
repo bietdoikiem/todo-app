@@ -1,0 +1,332 @@
+# Author :- Minh Nguyen (Student ID: s3812649)
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: A simple CloudFormation template
+Parameters:
+  MyVPC:
+    Description: Default VPC for us-east
+    Type: AWS::EC2::VPC::Id
+    Default: vpc-0c93aa04d4bb1508d
+  PublicSubnet1:
+    Description: Public Subnet 1 (AZ us-east-1c) available in AWS leaner account
+    Type: AWS::EC2::Subnet::Id
+    Default: subnet-03e82a661dda8db36
+  PublicSubnet2:
+    Description: Public Subnet 2 (AZ us-east-1c) available in AWS leaner account
+    Type: AWS::EC2::Subnet::Id
+    Default: subnet-053b2224617a45e90
+  LabKey:
+    Description: Lab Key name used for EC2 instances hosted on AWS Academy Lab
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: lab-key
+Resources:
+  # Public Amazon RDS instance
+  MyRDSInstance:
+    Type: AWS::RDS::DBInstance
+    DependsOn:
+      - MyRDSSecurityGroup
+    Properties:
+      AllocatedStorage: 20
+      DBInstanceClass: db.t3.micro
+      DBName: postgres
+      Engine: postgres
+      MasterUsername: postgres
+      MasterUserPassword: postgres
+      PubliclyAccessible: true
+      VPCSecurityGroups:
+        - !Ref MyRDSSecurityGroup
+
+  # RDS Security Group
+  MyRDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: RDSGroup
+      GroupDescription: Security group for RDS instance
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 0.0.0.0/0
+
+  ## Parameter Store for DB connection ##
+  MyDatabaseParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /todo-app/production/pg_database
+      Type: String
+      Value: postgres
+
+  MyHostParameter:
+    Type: AWS::SSM::Parameter
+    DependsOn:
+      - MyRDSInstance
+    Properties:
+      Name: /todo-app/production/pg_host
+      Type: String
+      Value: !GetAtt MyRDSInstance.Endpoint.Address
+
+  MyPortParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /todo-app/production/pg_port
+      Type: String
+      Value: 5432
+
+  MyUserParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /todo-app/production/pg_user
+      Type: String
+      Value: postgres
+
+  MyPasswordParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /todo-app/production/pg_password
+      Type: String
+      Value: postgres
+
+  # Launch template for ASG
+  MyLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    DependsOn:
+      - MySecurityGroup
+    Properties:
+      LaunchTemplateName: !Sub ${AWS::StackName}-launch-template
+      LaunchTemplateData:
+        ImageId: ami-0b5eea76982371e91
+        InstanceType: t3.small
+        KeyName: !Ref LabKey
+        IamInstanceProfile:
+          Name: !Ref MyInstanceProfile
+        SecurityGroups:
+          - !Ref MySecurityGroup
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            ## Install Docker ##
+            sudo yum update -y
+            sudo amazon-linux-extras install docker
+            sudo service docker start
+            # Make docker auto start
+            sudo systemctl enable docker
+            # Set docker default user permission
+            sudo usermod -a -G docker ec2-user
+
+            ## Install Docker Compose ##
+            wget https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)
+            sudo mv docker-compose-$(uname -s)-$(uname -m) /usr/local/bin/docker-compose
+            sudo chmod -v +x /usr/local/bin/docker-compose
+
+            ## Clone the source code
+
+
+            ## Set DB credentials from AWS Parameter store ##
+            export PG_USER="$(aws ssm get-parameters --names /todo-app/production/pg_user --query 'Parameters[0].Value' --output text)"
+            export PG_PASSWORD="$(aws ssm get-parameters --names /todo-app/production/pg_password --query 'Parameters[0].Value' --output text)"
+            export PG_DATABASE="$(aws ssm get-parameters --names /todo-app/production/pg_database --query 'Parameters[0].Value' --output text)"
+            export PG_HOST="$(aws ssm get-parameters --names /todo-app/production/pg_host --query 'Parameters[0].Value' --output text)"
+            export PG_PORT="$(aws ssm get-parameters --names /todo-app/production/pg_port --query 'Parameters[0].Value' --output text)"
+
+            ## Run docker image with env vars set ##
+            docker run -d -t -i \
+              -e PG_USER="$PG_USER" \
+              -e PG_PASSWORD="$PG_PASSWORD" \
+              -e PG_DATABASE="$PG_DATABASE" \
+              -e PG_HOST="$PG_HOST" \
+              -e PG_PORT="$PG_PORT" \
+              -p 80:3001 \
+              --name todo-app bietdoikiem/todo-app
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: environment
+                Value: production
+          - ResourceType: volume
+            Tags:
+              - Key: environment
+                Value: production
+
+  # Instance Profile
+  MyInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: '/'
+      Roles:
+        - LabRole
+
+  # Security Group
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: SGTraffic
+      GroupDescription: Security Group for incoming traffic
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp # HTTP
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp # SSH
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp # HTTPS
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  # Auto-Scaling Group
+  MyASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn:
+      - MyELBTargetGroup
+      - MyElasticLoadBalancer
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      LaunchTemplate:
+        LaunchTemplateId: !Ref MyLaunchTemplate
+        Version: !GetAtt MyLaunchTemplate.LatestVersionNumber
+      MinSize: 1
+      MaxSize: 2
+      DesiredCapacity: 1
+      HealthCheckGracePeriod: 300
+      MaxInstanceLifetime: 86400
+      TargetGroupARNs:
+        - !Ref MyELBTargetGroup
+
+  # Elastic Load Balancer
+  MyElasticLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn:
+      - MySecurityGroup
+    Properties:
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref MySecurityGroup
+
+  # ELB Target Group
+  MyELBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 6
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref MyVPC
+
+  # ELB Listener for HTTP
+  MyELBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn:
+      - MyELBTargetGroup
+      - MyElasticLoadBalancer
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref MyELBTargetGroup
+      LoadBalancerArn: !Ref MyElasticLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  # Scale Up policy
+  CPUUtilizationScaleUpPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: cpu-utilization-scale-up-policy
+      PolicyType: TargetTrackingScaling
+      ScalableTarget:
+        ResourceId: !Ref MyASG
+        ServiceNamespace: autoscaling
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 80 # CPU > 80% usage
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 300
+
+  # Scale Down policy
+  CPUUtilizationScaleDownPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: cpu-utilization-scale-down-policy
+      PolicyType: TargetTrackingScaling
+      ScalableTarget:
+        ResourceId: !Ref MyASG
+        ServiceNamespace: autoscaling
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 20 # CPU < 20% usage
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 300
+
+  # High CPU usage alarm with CloudWatch metric
+  CPUUtilizationHighAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: cpu-utilization-high-alarm
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 2
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Period: 60
+      Threshold: 60
+      Statistic: Average
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref CPUUtilizationScaleUpPolicy
+      AlarmDescription: Alarm when CPU utilization exceeds 80%
+      Dimensions:
+        - Name: MyASG
+          Value: !Ref MyASG
+
+  # Low CPU usage alarm with CloudWatch metric
+  CPUUtilizationLowAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: cpu-utilization-low-alarm
+      ComparisonOperator: LessThanThreshold
+      EvaluationPeriods: 2
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Period: 60
+      Threshold: 60
+      Statistic: Average
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref CPUUtilizationScaleDownPolicy
+      AlarmDescription: Alarm when CPU utilization below 20%
+      Dimensions:
+        - Name: MyASG
+          Value: !Ref MyASG
+
+Outputs:
+  OutputELBTargetGroup:
+    Description: A reference to the created Target Group
+    Value: !Ref MyELBTargetGroup
+  OutputSecurityGroup:
+    Description: A reference to the created Security Group
+    Value: !Ref MySecurityGroup
+  OutputElasticLoadBalancer:
+    Description: A reference to the created Elastic Load Balancer
+    Value: !Ref MyElasticLoadBalancer
+  OutputElasticListener:
+    Description: A reference to the created Elastic Load Balancer Listener
+    Value: !Ref MyELBListener
+  OutputAsgTemplate:
+    Description: Id for autoscaling launch template
+    Value: !Ref MyLaunchTemplate
+  OutputAsgGroup:
+    Description: Id for autoscaling group
+    Value: !Ref MyASG
+  OutputRDSEndpoint:
+    Description: Endpoint of the RDS instance
+    Value: !GetAtt MyRDSInstance.Endpoint.Address

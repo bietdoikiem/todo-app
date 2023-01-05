@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  todo-client:
+    image: bietdoikiem/todo-client:latest
+    build:
+      context: client
+      dockerfile: Dockerfile
+    container_name: client
+    restart: always
+    ports:
+      - 80:80
+    environment:
+      - NODE_ENV=production
+
+  todo-api:
+    image: bietdoikiem/todo-api:latest
+    build:
+      context: server
+      dockerfile: Dockerfile
+    container_name: api
+    restart: unless-stopped
+    ports:
+      - 3001:3001
+    environment:
+      - NODE_ENV=production
+      - PG_USER=${PG_USER}
+      - PG_PASSWORD=${PG_PASSWORD}
+      - PG_DATABASE=${PG_DATABASE}
+      - PG_HOST=${PG_HOST}
+      - PG_PORT=${PG_PORT}
