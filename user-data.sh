@@ -21,13 +21,6 @@ export PG_DATABASE="$(aws ssm get-parameters --names /todo-app/production/pg_dat
 export PG_HOST="$(aws ssm get-parameters --names /todo-app/production/pg_host --query 'Parameters[0].Value' --output text)"
 export PG_PORT="$(aws ssm get-parameters --names /todo-app/production/pg_port --query 'Parameters[0].Value' --output text)"
 
-## Run docker image with env vars set ##
-docker run -d -t -i \
-  -e PG_USER="$PG_USER" \
-  -e PG_PASSWORD="$PG_PASSWORD" \
-  -e PG_DATABASE="$PG_DATABASE" \
-  -e PG_HOST="$PG_HOST" \
-  -e PG_PORT="$PG_PORT" \
-  -p 80:3001 \
-  --name todo-app bietdoikiem/todo-app
+# Start composing
+docker-compose -f docker-compose.prod.yml up -d
 

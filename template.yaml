@@ -119,8 +119,13 @@ Resources:
             sudo mv docker-compose-$(uname -s)-$(uname -m) /usr/local/bin/docker-compose
             sudo chmod -v +x /usr/local/bin/docker-compose
 
-            ## Clone the source code
+            # Install git
+            sudo yum install git -y
 
+            ## Clone the source code
+            git clone https://github.com/bietdoikiem/todo-app.git
+
+            cd todo-app
 
             ## Set DB credentials from AWS Parameter store ##
             export PG_USER="$(aws ssm get-parameters --names /todo-app/production/pg_user --query 'Parameters[0].Value' --output text)"
@@ -130,14 +135,7 @@ Resources:
             export PG_PORT="$(aws ssm get-parameters --names /todo-app/production/pg_port --query 'Parameters[0].Value' --output text)"
 
             ## Run docker image with env vars set ##
-            docker run -d -t -i \
-              -e PG_USER="$PG_USER" \
-              -e PG_PASSWORD="$PG_PASSWORD" \
-              -e PG_DATABASE="$PG_DATABASE" \
-              -e PG_HOST="$PG_HOST" \
-              -e PG_PORT="$PG_PORT" \
-              -p 80:3001 \
-              --name todo-app bietdoikiem/todo-app
+            docker-compose -f docker-compose.prod.yml up -d
         TagSpecifications:
           - ResourceType: instance
             Tags:
