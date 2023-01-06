@@ -36,8 +36,6 @@ Resources:
   # Public RDS instance
   MyRDSInstance:
     Type: AWS::RDS::DBInstance
-    DependsOn:
-      - MyRDSSecurityGroup
     Properties:
       AllocatedStorage: 20
       DBInstanceClass: db.t3.micro
@@ -60,7 +58,6 @@ Resources:
   MyHostParameter:
     Type: AWS::SSM::Parameter
     DependsOn:
-      - MyRDSInstance
     Properties:
       Name: /todo-app/production/pg_host
       Type: String
@@ -90,8 +87,6 @@ Resources:
   # Launch template for ASG
   MyLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
-    DependsOn:
-      - MySecurityGroup
     Properties:
       LaunchTemplateName: !Sub ${AWS::StackName}-launch-template
       LaunchTemplateData:
@@ -100,7 +95,7 @@ Resources:
         KeyName: !Ref LabKey
         IamInstanceProfile:
           Name: !Ref MyInstanceProfile
-        SecurityGroups:
+        SecurityGroupIds:
           - !Ref MySecurityGroup
         UserData:
           Fn::Base64: !Sub |
@@ -178,9 +173,6 @@ Resources:
   # Auto-Scaling Group
   MyASG:
     Type: AWS::AutoScaling::AutoScalingGroup
-    DependsOn:
-      - MyELBTargetGroup
-      - MyElasticLoadBalancer
     Properties:
       VPCZoneIdentifier:
         - !Ref PublicSubnet1
@@ -199,8 +191,6 @@ Resources:
   # Elastic Load Balancer
   MyElasticLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    DependsOn:
-      - MySecurityGroup
     Properties:
       Subnets:
         - !Ref PublicSubnet1
@@ -223,9 +213,6 @@ Resources:
   # ELB Listener for HTTP
   MyELBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
-    DependsOn:
-      - MyELBTargetGroup
-      - MyElasticLoadBalancer
     Properties:
       DefaultActions:
         - Type: forward
@@ -236,75 +223,59 @@ Resources:
 
   # Scale Up policy
   CPUUtilizationScaleUpPolicy:
-    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Type: AWS::AutoScaling::ScalingPolicy
     Properties:
-      PolicyName: cpu-utilization-scale-up-policy
-      PolicyType: TargetTrackingScaling
-      ScalableTarget:
-        ResourceId: !Ref MyASG
-        ServiceNamespace: autoscaling
-      TargetTrackingScalingPolicyConfiguration:
-        TargetValue: 80 # CPU > 80% usage
-        PredefinedMetricSpecification:
-          PredefinedMetricType: ASGAverageCPUUtilization
-        ScaleInCooldown: 300
-        ScaleOutCooldown: 300
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref MyASG
+      Cooldown: 300
+      ScalingAdjustment: 1
 
   # Scale Down policy
   CPUUtilizationScaleDownPolicy:
-    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Type: AWS::AutoScaling::ScalingPolicy
     Properties:
-      PolicyName: cpu-utilization-scale-down-policy
-      PolicyType: TargetTrackingScaling
-      ScalableTarget:
-        ResourceId: !Ref MyASG
-        ServiceNamespace: autoscaling
-      TargetTrackingScalingPolicyConfiguration:
-        TargetValue: 20 # CPU < 20% usage
-        PredefinedMetricSpecification:
-          PredefinedMetricType: ASGAverageCPUUtilization
-        ScaleInCooldown: 300
-        ScaleOutCooldown: 300
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref MyASG
+      Cooldown: 300
+      ScalingAdjustment: -1
 
-  # High CPU usage alarm with CloudWatch metric
-  CPUUtilizationHighAlarm:
+  # High CPU Alarm from CloudWatch
+  MyHighCPUAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: cpu-utilization-high-alarm
-      ComparisonOperator: GreaterThanThreshold
-      EvaluationPeriods: 2
+      AlarmDescription: 'Alarm when CPU exceeds 70% for 1 minute'
       MetricName: CPUUtilization
       Namespace: AWS/EC2
-      Period: 60
-      Threshold: 60
       Statistic: Average
-      ActionsEnabled: true
+      Period: 60
+      Threshold: 70
+      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - !Ref CPUUtilizationScaleUpPolicy
-      AlarmDescription: Alarm when CPU utilization exceeds 80%
       Dimensions:
         - Name: MyASG
           Value: !Ref MyASG
+      Unit: Percent
 
-  # Low CPU usage alarm with CloudWatch metric
-  CPUUtilizationLowAlarm:
+  # High CPU Alarm from CloudWatch
+  MyLowCPUAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: cpu-utilization-low-alarm
-      ComparisonOperator: LessThanThreshold
-      EvaluationPeriods: 2
+      AlarmDescription: 'Alarm when CPU below 30% for 2 minute'
       MetricName: CPUUtilization
       Namespace: AWS/EC2
-      Period: 60
-      Threshold: 60
       Statistic: Average
-      ActionsEnabled: true
+      Period: 120
+      Threshold: 30
+      EvaluationPeriods: 1
+      ComparisonOperator: LessThanThreshold
       AlarmActions:
         - !Ref CPUUtilizationScaleDownPolicy
-      AlarmDescription: Alarm when CPU utilization below 20%
       Dimensions:
         - Name: MyASG
           Value: !Ref MyASG
+      Unit: Percent
 
 Outputs:
   OutputELBTargetGroup:
