@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   todo-client:
-    image: bietdoikiem/todo-client:latest
+    image: bietdoikiem/todo-client:amd64 # NOTE: amd64-based image for deploying on Linux VM
     build:
       context: client
       dockerfile: Dockerfile
@@ -14,7 +14,7 @@ services:
       - NODE_ENV=production
 
   todo-api:
-    image: bietdoikiem/todo-api:latest
+    image: bietdoikiem/todo-api:amd64
     build:
       context: server
       dockerfile: Dockerfile

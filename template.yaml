@@ -57,7 +57,6 @@ Resources:
 
   MyHostParameter:
     Type: AWS::SSM::Parameter
-    DependsOn:
     Properties:
       Name: /todo-app/production/pg_host
       Type: String
