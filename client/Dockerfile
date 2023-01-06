@@ -1,7 +1,7 @@
 # build environment
 FROM node:16-alpine as build
 WORKDIR /app
-COPY . .
+COPY ./ ./
 RUN npm install 
 RUN npm run build
 # production environment
