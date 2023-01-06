@@ -1,12 +1,5 @@
-import {
-  Box,
-  Heading,
-  Container,
-  Text,
-  Button,
-  Stack,
-} from '@chakra-ui/react';
-import {Link} from 'react-router-dom'
+import { Box, Button, Container, Heading, Stack, Text } from '@chakra-ui/react';
+import { Link } from 'react-router-dom';
 
 export default function Main() {
   return (
@@ -16,25 +9,29 @@ export default function Main() {
           as={Box}
           textAlign={'center'}
           spacing={{ base: 8, md: 10 }}
-          py={{ base: 20, md: 36 }}>
+          py={{ base: 20, md: 36 }}
+        >
           <Heading
             fontWeight={600}
             fontSize={{ base: '2xl', sm: '4xl', md: '7xl' }}
-            lineHeight={'110%'}>
+            lineHeight={'110%'}
+          >
             Full Stack <br />
             <Text as={'span'} color={'purple.600'}>
               Todo App
             </Text>
           </Heading>
           <Text fontSize={'lg'} color={'gray.500'}>
-            Full Stack Todo App developed with PostgreSQL, Express.js, Node.js, React.js and JWT by akifz21
+            Full Stack Todo App developed with PostgreSQL, Express.js, Node.js,
+            React.js and JWT by bietdoikiem
           </Text>
           <Stack
             direction={'row'}
             spacing={3}
             align={'center'}
             alignSelf={'center'}
-            position={'relative'}>
+            position={'relative'}
+          >
             <Button
               color={'white'}
               bg={'purple.600'}
@@ -45,20 +42,29 @@ export default function Main() {
               to={'/register'}
               _hover={{
                 bg: 'purple.500',
-              }}>
+              }}
+            >
               Register
             </Button>
             <Button
-              colorScheme={'purple'}             
+              colorScheme={'purple'}
               rounded={'full'}
               px={6}
               as={Link}
-              to={"/login"}
+              to={'/login'}
               variant={'outline'}
-              size={'lg'}>
+              size={'lg'}
+            >
               Login
             </Button>
-            <Button variant={'link'} as={'a'} href={"https://github.com/akifz21/pern-stack-todo-app"} colorScheme={'blue'} fontSize={'lg'} size={'md'}>
+            <Button
+              variant={'link'}
+              as={'a'}
+              href={'https://github.com/bietdoikiem/todo-app'}
+              colorScheme={'blue'}
+              fontSize={'lg'}
+              size={'md'}
+            >
               Github
             </Button>
           </Stack>
@@ -67,4 +73,3 @@ export default function Main() {
     </>
   );
 }
-
