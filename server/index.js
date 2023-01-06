@@ -41,10 +41,14 @@ async function main() {
   );
   app.use(express.json());
 
-  app.use('/todo', todoRouter);
-  app.use('/user', userRouter);
+  app.use('/api/todo', todoRouter);
+  app.use('/api/user', userRouter);
 
   app.get('/', (_req, res) => {
+    res.send('index');
+  });
+
+  app.get('/api', (_req, res) => {
     res.send('api');
   });
 
