@@ -14,12 +14,13 @@ wget https://github.com/docker/compose/releases/latest/download/docker-compose-$
 sudo mv docker-compose-$(uname -s)-$(uname -m) /usr/local/bin/docker-compose
 sudo chmod -v +x /usr/local/bin/docker-compose
 
-## Set DB credentials from AWS Parameter store ##
+## Set credentials from AWS Parameter store ##
 export PG_USER="$(aws ssm get-parameters --names /todo-app/production/pg_user --query 'Parameters[0].Value' --output text)"
 export PG_PASSWORD="$(aws ssm get-parameters --names /todo-app/production/pg_password --query 'Parameters[0].Value' --output text)"
 export PG_DATABASE="$(aws ssm get-parameters --names /todo-app/production/pg_database --query 'Parameters[0].Value' --output text)"
 export PG_HOST="$(aws ssm get-parameters --names /todo-app/production/pg_host --query 'Parameters[0].Value' --output text)"
 export PG_PORT="$(aws ssm get-parameters --names /todo-app/production/pg_port --query 'Parameters[0].Value' --output text)"
+export JWT_SECRET="$(aws ssm get-parameters --names /todo-app/production/jwt_secret --query 'Parameters[0].Value' --output text)"
 
 # Start composing
 docker-compose -f docker-compose.prod.yml up -d

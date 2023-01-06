@@ -19,6 +19,9 @@ Parameters:
     Description: Lab Key name used for EC2 instances hosted on AWS Academy Lab
     Type: AWS::EC2::KeyPair::KeyName
     Default: lab-key
+  JWTSecret:
+    Description: JWT Secret for Todo API
+    Type: String
 Resources:
   # RDS Security Group
   MyRDSSecurityGroup:
@@ -83,6 +86,14 @@ Resources:
       Type: String
       Value: postgres
 
+  # API JWT Secret Parameter
+  MyJwtSecretParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /todo-app/production/jwt_secret
+      Type: String
+      Value: !Ref JWTSecret
+
   # Launch template for ASG
   MyLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
@@ -121,12 +132,13 @@ Resources:
 
             cd todo-app
 
-            ## Set DB credentials from AWS Parameter store ##
+            ## Set credentials from AWS Parameter store ##
             export PG_USER="$(aws ssm get-parameters --names /todo-app/production/pg_user --query 'Parameters[0].Value' --output text)"
             export PG_PASSWORD="$(aws ssm get-parameters --names /todo-app/production/pg_password --query 'Parameters[0].Value' --output text)"
             export PG_DATABASE="$(aws ssm get-parameters --names /todo-app/production/pg_database --query 'Parameters[0].Value' --output text)"
             export PG_HOST="$(aws ssm get-parameters --names /todo-app/production/pg_host --query 'Parameters[0].Value' --output text)"
             export PG_PORT="$(aws ssm get-parameters --names /todo-app/production/pg_port --query 'Parameters[0].Value' --output text)"
+            export JWT_SECRET="$(aws ssm get-parameters --names /todo-app/production/jwt_secret --query 'Parameters[0].Value' --output text)"
 
             ## Run docker image with env vars set ##
             docker-compose -f docker-compose.prod.yml up -d
