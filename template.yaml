@@ -97,6 +97,13 @@ Resources:
   # Launch template for ASG
   MyLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
+    DependsOn:
+      - MyDatabaseParameter
+      - MyHostParameter
+      - MyPortParameter
+      - MyUserParameter
+      - MyPasswordParameter
+      - MyJwtSecretParameter
     Properties:
       LaunchTemplateName: !Sub ${AWS::StackName}-launch-template
       LaunchTemplateData:
@@ -128,17 +135,18 @@ Resources:
             sudo yum install git -y
 
             ## Clone the source code
+            cd ~ # Back to home
             git clone https://github.com/bietdoikiem/todo-app.git
-
             cd todo-app
 
             ## Set credentials from AWS Parameter store ##
-            export PG_USER="$(aws ssm get-parameters --region us-east-1 --names /todo-app/production/pg_user --query 'Parameters[0].Value' --output text)"
-            export PG_PASSWORD="$(aws ssm get-parameters --region us-east-1 --names /todo-app/production/pg_password --query 'Parameters[0].Value' --output text)"
-            export PG_DATABASE="$(aws ssm get-parameters --region us-east-1 --names /todo-app/production/pg_database --query 'Parameters[0].Value' --output text)"
-            export PG_HOST="$(aws ssm get-parameters --region us-east-1 --names /todo-app/production/pg_host --query 'Parameters[0].Value' --output text)"
-            export PG_PORT="$(aws ssm get-parameters --region us-east-1 --names /todo-app/production/pg_port --query 'Parameters[0].Value' --output text)"
-            export JWT_SECRET="$(aws ssm get-parameters --region us-east-1 --names /todo-app/production/jwt_secret --query 'Parameters[0].Value' --output text)"
+            PG_USER="$(aws ssm get-parameters --region us-east-1 --names /todo-app/production/pg_user --query 'Parameters[0].Value' --output text)"
+            PG_PASSWORD="$(aws ssm get-parameters --region us-east-1 --names /todo-app/production/pg_password --query 'Parameters[0].Value' --output text)"
+            PG_DATABASE="$(aws ssm get-parameters --region us-east-1 --names /todo-app/production/pg_database --query 'Parameters[0].Value' --output text)"
+            PG_HOST="$(aws ssm get-parameters --region us-east-1 --names /todo-app/production/pg_host --query 'Parameters[0].Value' --output text)"
+            PG_PORT="$(aws ssm get-parameters --region us-east-1 --names /todo-app/production/pg_port --query 'Parameters[0].Value' --output text)"
+            JWT_SECRET="$(aws ssm get-parameters --region us-east-1 --names /todo-app/production/jwt_secret --query 'Parameters[0].Value' --output text)"
+            echo "Database Host: $PG_HOST"
 
             ## Run docker image with env vars set ##
             docker-compose -f docker-compose.prod.yml up -d

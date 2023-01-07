@@ -20,7 +20,10 @@ async function main() {
 `
     )
     .then(() => console.log('created table users successfully'))
-    .catch((err) => console.log(err));
+    .catch((err) => {
+      console.error('Database Error occurred at:', process.env.PG_HOST);
+      console.error(err);
+    });
 
   await pool
     .query(
@@ -34,7 +37,10 @@ async function main() {
 `
     )
     .then(() => console.log('created table todos successfully'))
-    .catch((err) => console.log(err));
+    .catch((err) => {
+      console.error('Database Error occurred at:', process.env.PG_HOST);
+      console.error(err);
+    });
 
   app.use(
     cors({ methods: ['GET', 'POST', 'DELETE', 'UPDATE', 'PUT', 'PATCH'] })
