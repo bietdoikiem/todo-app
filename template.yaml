@@ -108,7 +108,7 @@ Resources:
       LaunchTemplateName: !Sub ${AWS::StackName}-launch-template
       LaunchTemplateData:
         ImageId: ami-0b5eea76982371e91
-        InstanceType: t3.small
+        InstanceType: t2.micro
         KeyName: !Ref LabKey
         IamInstanceProfile:
           Name: !Ref MyInstanceProfile
