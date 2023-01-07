@@ -12,7 +12,7 @@ Parameters:
     Type: AWS::EC2::Subnet::Id
     Default: subnet-03e82a661dda8db36
   PublicSubnet2:
-    Description: Public Subnet 2 (AZ us-east-1c) available in AWS leaner account
+    Description: Public Subnet 2 (AZ us-east-1b) available in AWS leaner account
     Type: AWS::EC2::Subnet::Id
     Default: subnet-053b2224617a45e90
   LabKey:

@@ -1,6 +1,11 @@
-### Full Stack Todo App developed with PostgreSQL, Express.js, Node.js, React.js and JWT by akifz21
+# Todo App
 
-## Project Images :
+```
+Name: Nguyen Pham Quoc Minh
+Student ID: s3812649
+```
+
+## Project Images:
 
 **Main**
 <img src='./readme-images/main.png'/>
