@@ -3,7 +3,7 @@ version: '3.8'
 services:
   todo-client:
     hostname: todo-client
-    image: bietdoikiem/todo-client:amd64
+    image: bietdoikiem/todo-client:latest
     build:
       context: client
       dockerfile: Dockerfile
@@ -12,11 +12,11 @@ services:
     ports:
       - 80:80
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
 
   todo-api:
     hostname: todo-api
-    image: bietdoikiem/todo-api:amd64
+    image: bietdoikiem/todo-api:latest
     build:
       context: server
       dockerfile: Dockerfile
@@ -25,7 +25,7 @@ services:
     ports:
       - 3001:3001
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - PG_USER=${PG_USER}
       - PG_PASSWORD=${PG_PASSWORD}
       - PG_DATABASE=${PG_DATABASE}
